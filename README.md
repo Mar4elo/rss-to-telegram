@@ -6,9 +6,9 @@ RSS poster to telegram chat
 
 ## Usage
 ```shell
-usage: java rss_to_telegram.jar [-c <arg>]
+usage: java -jar rss_to_telegram.jar <arg>
 Options
-   -c,--config <arg>     Path to config file
+   <arg>     Path to config file
 ```
 
 ## Configuration file
