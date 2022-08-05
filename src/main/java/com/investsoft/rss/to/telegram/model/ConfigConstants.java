@@ -9,7 +9,9 @@ package com.investsoft.rss.to.telegram.model;
  * @author SMS
  */
 public class ConfigConstants {
-	public String fullArticleLink;
-	public String fullArticleLinkCaption;
-	public String languageCode;
+
+    public Boolean showFullArticleLink;
+    public String fullArticleLink;
+    public String fullArticleLinkCaption;
+    public String languageCode;
 }

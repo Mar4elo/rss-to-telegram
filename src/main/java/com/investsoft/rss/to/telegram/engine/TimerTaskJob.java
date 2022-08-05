@@ -28,62 +28,45 @@ import org.telegram.telegrambots.meta.api.objects.MessageEntity;
  */
 public class TimerTaskJob extends TimerTask {
 
-	private final Logger log = Application.getLogger(this.getClass().getSimpleName());
+    private final Logger log = Application.getLogger(this.getClass().getSimpleName());
 
-	private final ConfigRssItem config;
-	private final Consumer<ConfigRssItem> restartTimer;
-	private String FULL_ARTICLE_LINK = "Link";
-	private String FULL_ARTICLE_LINK_CAPTION = "Full article";
-	private String LANGUAGE_CODE = "en";
+    private final ConfigRssItem config;
+    private final Consumer<ConfigRssItem> restartTimer;
 
-	public TimerTaskJob(ConfigRssItem config, Consumer<ConfigRssItem> restartTimer) {
-		this.config = config;
-		this.restartTimer = restartTimer;
-		if (Application.CONFIG.constants != null) {
-			this.FULL_ARTICLE_LINK = Application.CONFIG.constants.fullArticleLink;
-			this.FULL_ARTICLE_LINK_CAPTION = Application.CONFIG.constants.fullArticleLinkCaption;
-			this.LANGUAGE_CODE = Application.CONFIG.constants.languageCode;
-		}
-	}
+    public TimerTaskJob(ConfigRssItem config, Consumer<ConfigRssItem> restartTimer) {
+        this.config = config;
+        this.restartTimer = restartTimer;
+    }
 
-	@Override
-	public void run() {
-		try {
-			SyndFeed feed = new SyndFeedInput().build(new XmlReader(new URL(this.config.url)));
-			List<SyndEntryImpl> newEntries = ((List<SyndEntryImpl>) feed.getEntries())
-				.stream()
-				.filter(entry -> !State.getInstance().exists(this.config.url, entry.getLink()))
-				.sorted((a, b) -> a.getLink().compareTo(b.getLink()))
-				.collect(Collectors.toList());
-			log.info(this.config.url + " got " + newEntries.size() + " entries");
-			newEntries.forEach(entry -> {
-				String text = new StringBuilder()
-					.append(entry.getTitle())
-					.append("\r\n").append("\r\n")
-					.append(Jsoup.parse(entry.getDescription().getValue()).text())
-					.append("\r\n").append("\r\n")
-					.append(entry.getCategories().stream().map(a -> ((SyndCategory) a).getName()).map(a -> ((String) a).replace(" ", "_")).collect(Collectors.joining(" #", "#", "")))
-					.append("\r\n").append("\r\n")
-					.append(FULL_ARTICLE_LINK)
-					.toString();
-				SendMessage message = new SendMessage(); // Create a SendMessage object with mandatory fields
-				message.setChatId(this.config.telegramChatId);
-				//message.enableMarkdown(true);
-				message.setText(text);
-				message.setEntities(new ArrayList<>());
+    @Override
+    public void run() {
+        try {
+            SyndFeed feed = new SyndFeedInput().build(new XmlReader(new URL(this.config.url)));
+            List<SyndEntryImpl> newEntries = ((List<SyndEntryImpl>) feed.getEntries())
+                    .stream()
+                    .filter(entry -> !State.getInstance().exists(this.config.url, entry.getLink()))
+                    //.sorted((a, b) -> a.getLink().compareTo(b.getLink()))
+                    .collect(Collectors.toList());
+            log.info(this.config.url + " got " + newEntries.size() + " entries");
+            newEntries.forEach(entry -> {
+                SendMessage message = new SendMessageBuilder(this.config.telegramChatId)
+                        .setTitleText(entry.getTitle())
+                        .setCrLf().setCrLf()
+                        .setText(Jsoup.parse(entry.getDescription().getValue()).text())
+                        .setCrLf().setCrLf()
+                        .setHashTag((List) entry.getCategories().stream().map(a -> ((SyndCategory) a).getName()).collect(Collectors.toList()))
+                        .setCrLf().setCrLf()
+                        .setLink(entry.getLink())
+                        .build();
 
-				message.getEntities().add(new MessageEntity("bold", 0, entry.getTitle().length(), entry.getLink(), null, "ru", entry.getTitle()));
-				message.getEntities().add(new MessageEntity("text_link",
-					text.length() - FULL_ARTICLE_LINK.length(),
-					FULL_ARTICLE_LINK.length(), entry.getLink(),
-					null, LANGUAGE_CODE, FULL_ARTICLE_LINK_CAPTION));
-				Sender.getInstance().send(message);
-				State.getInstance().save(this.config.url, entry.getLink());
-			});
+                Sender.getInstance().send(message);
+                State.getInstance().save(this.config.url, entry.getLink());
+            });
 
-		} catch (Exception ex) {
-		}
-		this.restartTimer.accept(this.config);
-	}
+        } catch (Exception ex) {
+            log.error(ex);
+        }
+        this.restartTimer.accept(this.config);
+    }
 
 }

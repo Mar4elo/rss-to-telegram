@@ -20,7 +20,7 @@ import org.apache.log4j.Logger;
 public class Engine {
 
 	private final Logger log = Application.getLogger(this.getClass().getSimpleName());
-	
+
 	private final Map<ConfigRssItem, Timer> timerJobs = new HashMap<>();
 	private final Timer timerGc = new Timer();
 
@@ -31,12 +31,13 @@ public class Engine {
 				timer.schedule(new TimerTaskJob(item, this.restartTimer), item.interval);
 				this.timerJobs.put(item, timer);
 			});
+		// Periodical call garbage collector, to collect wasted jobs
 		this.timerGc.scheduleAtFixedRate(new TimerTask() {
 			@Override
 			public void run() {
 				System.gc();
 			}
-		}, 0, 10000);
+		}, 0, 60000);
 	}
 
 	private Consumer<ConfigRssItem> restartTimer = conf
